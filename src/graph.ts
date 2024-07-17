@@ -1,4 +1,4 @@
-import type { APIFormat } from '.'
+import { APIFormat } from '.'
 import { type ComfyNode, zComfyWorkflow } from './graph-json'
 
 export type ID = string | number
@@ -19,7 +19,7 @@ export class GraphLink {
 export class NodeSlot {
   constructor(
     public name: string,
-    public type: string | -1,
+    public type: string,
     public rest: object = {},
   ) {}
 }
@@ -27,7 +27,7 @@ export class NodeSlot {
 export class NodeInputSlot extends NodeSlot {
   constructor(
     public name: string,
-    public type: string | -1,
+    public type: string,
     public link: number | null,
     public extra: object = {},
   ) {
@@ -38,7 +38,7 @@ export class NodeInputSlot extends NodeSlot {
 export class NodeOutputSlot extends NodeSlot {
   constructor(
     public name: string,
-    public type: string | -1,
+    public type: string,
     public links: number[] | null,
     public extra: object = {},
   ) {
@@ -51,11 +51,11 @@ export class GraphNode {
     public graph: Graph,
     public id: ID,
     public type: string,
-    public pos: Vector2,
-    public size: Vector2,
-    public flags: object,
-    public order: number,
-    public mode: number,
+    public pos: Vector2 = [0, 0],
+    public size: Vector2 = [0, 0],
+    public flags: object = {},
+    public order = 0,
+    public mode = 0,
     public inputs: NodeInputSlot[] = [],
     public outputs: NodeOutputSlot[] = [],
     public properties: object = {},
@@ -103,6 +103,65 @@ export class GraphNode {
     if (slot_info.link == null) return null
     return this.graph.links.get(slot_info.link)
   }
+
+  findOutputSlot(name: string): number
+  findOutputSlot(name: string, returnObj: true): NodeOutputSlot
+  findOutputSlot(name: string, returnObj = false) {
+    if (!this.outputs) {
+      return -1
+    }
+    for (const [i, output] of this.outputs.entries()) {
+      if (name === output.name) {
+        return !returnObj ? i : output
+      }
+    }
+    return -1
+  }
+
+  connect(slot: number, targetNode: GraphNode, targetSlot = 0) {
+    if (!this.outputs || slot >= this.outputs.length) {
+      return null
+    }
+    // avoid loopback
+    if (targetNode === this) {
+      return null
+    }
+
+    const input = targetNode.inputs[targetSlot]
+    if (!input) return null
+    const output = this.outputs[slot]
+
+    if (!output) return null
+
+    // if there is something already plugged there, disconnect
+    if (targetNode.inputs[targetSlot].link != null) {
+      targetNode.inputs[targetSlot].link = null
+    }
+
+    const nextId = ++this.graph.lastLinkId
+
+    // create link class
+    const link = new GraphLink(
+      nextId,
+      input.type || output.type,
+      this.id,
+      slot,
+      targetNode.id,
+      targetSlot,
+    )
+
+    // add to graph links list
+    this.graph.links.set(link.id, link)
+
+    // connect in output
+    if (output.links == null) {
+      output.links = []
+    }
+    output.links.push(link.id)
+    // connect in input
+    targetNode.inputs[targetSlot].link = link.id
+    return link
+  }
 }
 
 export class GraphGroup {
@@ -116,8 +175,8 @@ export class GraphGroup {
 }
 
 export class Graph {
-  public lastNodeId?: ID
-  public lastLinkId?: number
+  public lastNodeId: ID = 0
+  public lastLinkId = 0
   public nodes: Record<ID, GraphNode> = {}
   public links: Map<number, GraphLink> = new Map()
   public groups: GraphGroup[] = []
@@ -126,8 +185,8 @@ export class Graph {
   public version = 0
 
   clear() {
-    this.lastNodeId = undefined
-    this.lastLinkId = undefined
+    this.lastNodeId = 0
+    this.lastLinkId = 0
     this.nodes = {}
     this.links = new Map()
     this.groups = []
@@ -345,5 +404,28 @@ export class Graph {
   bypassNodeById(nodeId: ID, bypass = true) {
     const node = this.getNodeById(nodeId)
     if (node) node.mode = bypass ? 4 : 0
+  }
+
+  static fromWorkflow(workflow: APIFormat.Workflow) {
+    const graph = new Graph()
+    for (const [id, data] of Object.entries(workflow)) {
+      graph.nodes[id] = new GraphNode(graph, id, data.class_type)
+    }
+
+    for (const [id, node] of Object.entries(graph.nodes)) {
+      const data = workflow[id]
+      for (const input in data.inputs ?? {}) {
+        const value = data.inputs[input]
+        if (APIFormat.isOutput(value)) {
+          const [fromId, fromSlot] = value
+          const fromNode = graph.getNodeById(fromId)
+          const toSlot = node.inputs?.findIndex(inp => inp.name === input)
+          if (toSlot != null || toSlot !== -1) {
+            fromNode.connect(fromSlot, node, toSlot)
+          }
+        }
+      }
+    }
+    return graph
   }
 }
