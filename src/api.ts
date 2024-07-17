@@ -19,7 +19,7 @@ export class Node {
     public workflow: Workflow,
     public id: string,
     public classType: string,
-    public meta?: Record<string, any>,
+    public meta?: Record<string, unknown>,
   ) {}
 
   output(index: number): NodeOutput {
@@ -56,7 +56,9 @@ export class Workflow {
   protected index = 0
   protected nodes: Map<string, Node> = new Map()
 
-  constructor() {}
+  constructor(workflow?: APIFormat.Workflow) {
+    if (workflow) this.mergeApiFormat(workflow)
+  }
 
   genId() {
     while (true) {
@@ -66,7 +68,11 @@ export class Workflow {
     }
   }
 
-  node(classType: string, nodeId = this.genId(), meta?: Record<string, any>) {
+  node(
+    classType: string,
+    nodeId = this.genId(),
+    meta?: Record<string, unknown>,
+  ) {
     const node = new Node(this, nodeId, classType, meta)
     this.nodes.set(nodeId, node)
     return node
@@ -93,18 +99,17 @@ export class Workflow {
   }
 
   mergeApiFormat(workflow: APIFormat.Workflow) {
-    const w = this
-
     for (const [nodeId, node] of Object.entries(workflow)) {
-      const n = new Node(w, nodeId, node.class_type, node._meta)
-      w.nodes.set(nodeId, n)
+      const n = new Node(this, nodeId, node.class_type, node._meta)
+      this.nodes.set(nodeId, n)
     }
 
     for (const [nodeId, node] of Object.entries(workflow)) {
-      const n = w.nodes.get(nodeId)!
+      const n = this.nodes.get(nodeId)
+      if (!n) throw new Error('unreachable')
       for (const [name, value] of Object.entries(node.inputs)) {
         if (APIFormat.isOutput(value)) {
-          const t = w.nodes.get(value[0])
+          const t = this.nodes.get(value[0])
           if (!t)
             throw new Error(
               `Invalid workflow format: node "${value[0]}" not found`,
@@ -116,6 +121,19 @@ export class Workflow {
       }
     }
 
-    return w
+    return this
+  }
+
+  mergeInputs(workflow: APIFormat.Workflow) {
+    for (const [nodeId, node] of this.nodes) {
+      const n = workflow[nodeId]
+      if (!n?.inputs) continue
+      for (const [name, value] of Object.entries(n.inputs)) {
+        if (APIFormat.isOutput(value)) {
+          continue
+        }
+        node.setInput(name, value)
+      }
+    }
   }
 }

@@ -50,7 +50,7 @@ const v1 = {
   },
   general_positive: {
     inputs: {
-      text: '4k, high quality, anime style, ' + prompts,
+      text: `4k, high quality, anime style, ${prompts}`,
       clip: ['10', 0],
     },
     class_type: 'CLIPTextEncode',
@@ -175,7 +175,7 @@ const v2 = {
   },
   '57': {
     inputs: {
-      string: '4k, high quality, anime style, ' + prompts,
+      string: `4k, high quality, anime style, ${prompts}`,
     },
     class_type: 'StringConstant',
     _meta: {

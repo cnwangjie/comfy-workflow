@@ -4,7 +4,7 @@ export interface Workflow {
 export interface Node {
   inputs: Inputs
   class_type: string
-  _meta?: Record<string, any>
+  _meta?: Record<string, unknown>
 }
 export type InputValue = string | number | boolean | object
 export interface Inputs {

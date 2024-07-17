@@ -1,6 +1,6 @@
 {
   "name": "comfy-workflow",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "main": "dist/cjs/index.js",
   "module": "dist/esm/index.js",
   "types": "types/index.d.ts",
@@ -15,9 +15,13 @@
     "prepublishOnly": "yarn build"
   },
   "devDependencies": {
+    "@biomejs/biome": "^1.8.3",
     "@types/node": "^20.10.1",
     "typescript": "^5.3.2",
     "vitest": "^2.0.2"
   },
-  "packageManager": "yarn@1.22.19+sha1.4ba7fc5c6e704fce2066ecbfb0b0d8976fe62447"
+  "packageManager": "yarn@1.22.19+sha1.4ba7fc5c6e704fce2066ecbfb0b0d8976fe62447",
+  "dependencies": {
+    "zod": "^3.23.8"
+  }
 }
