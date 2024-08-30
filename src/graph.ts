@@ -205,6 +205,14 @@ export class Graph {
       this.nodes[node.id] = GraphNode.fromJSON(this, node)
     }
     for (const [id, srcId, srcSlot, dstId, dstSlot, type] of data.links) {
+      if (
+        srcId == null ||
+        srcSlot == null ||
+        dstId == null ||
+        dstSlot == null
+      ) {
+        continue
+      }
       this.links.set(
         id,
         new GraphLink(id, type, srcId, srcSlot, dstId, dstSlot),
@@ -420,6 +428,16 @@ export class Graph {
           const [fromId, fromSlot] = value
           const fromNode = graph.getNodeById(fromId)
           const toSlot = node.inputs?.findIndex(inp => inp.name === input)
+          // FIXME: lost the following logic because it requires the widget data
+          // if (toSlot == null || toSlot === -1) {
+          // 	try {
+          // 		// Target has no matching input, most likely a converted widget
+          // 		const widget = node.widgets?.find((w) => w.name === input);
+          // 		if (widget && node.convertWidgetToInput?.(widget)) {
+          // 			toSlot = node.inputs?.length - 1;
+          // 		}
+          // 	} catch (error) {}
+          // }
           if (toSlot != null || toSlot !== -1) {
             fromNode.connect(fromSlot, node, toSlot)
           }

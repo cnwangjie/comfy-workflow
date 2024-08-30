@@ -4,10 +4,14 @@ const zComfyNodeId = z.number().or(z.string())
 
 const zComfyLink = z.tuple([
   z.number(), // Link id
-  zComfyNodeId, // Node id of source node
-  z.number(), // Output slot# of source node
-  zComfyNodeId, // Node id of destination node
-  z.number(), // Input slot# of destination node
+  zComfyNodeId.nullable(), // Node id of source node
+  z
+    .number()
+    .nullable(), // Output slot# of source node
+  zComfyNodeId.nullable(), // Node id of destination node
+  z
+    .number()
+    .nullable(), // Input slot# of destination node
   z.string(), // Data type
 ])
 
