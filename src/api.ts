@@ -26,8 +26,12 @@ export class Node {
     return new NodeOutput(this.workflow, this, index)
   }
 
-  setInput(name: string, value: APIFormat.InputValue) {
-    this.inputs.set(name, value)
+  setInput(name: string, value: APIFormat.InputValue | null) {
+    if (value == null) {
+      this.inputs.delete(name)
+    } else {
+      this.inputs.set(name, value)
+    }
     return this
   }
 
@@ -110,11 +114,11 @@ export class Workflow {
       for (const [name, value] of Object.entries(node.inputs)) {
         if (APIFormat.isOutput(value)) {
           const t = this.nodes.get(value[0])
-          if (!t)
-            throw new Error(
-              `Invalid workflow format: node "${value[0]}" not found`,
-            )
-          n.setInput(name, t.output(value[1]))
+          if (t) {
+            n.setInput(name, t.output(value[1]))
+          } else {
+            n.setInput(name, null)
+          }
         } else {
           n.setInput(name, value)
         }
